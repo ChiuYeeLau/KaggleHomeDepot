@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="author" content="wittmaan" />
+
+
+<title>Exploring BNP Paribas Cardif Claims Management</title>
+
+<script src="output_files/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="output_files/bootstrap-3.3.1/css/bootstrap.min.css" rel="stylesheet" />
+<script src="output_files/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="output_files/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="output_files/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="output_files/highlight/default.css"
+      type="text/css" />
+<script src="output_files/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">Exploring BNP Paribas Cardif Claims Management</h1>
+<h4 class="author"><em>wittmaan</em></h4>
+<h4 class="date"><em>February 9, 2016</em></h4>
+</div>
+
+
+<p><em>Please let me know of any suggestions or errors</em></p>
+<p>Read in the data:</p>
+<pre class="r"><code>library(ggplot2)
+library(gridExtra)
+library(readr)
+
+train &lt;- read_csv(&quot;../input/train.csv&quot;)
+test &lt;- read_csv(&quot;../input/test.csv&quot;)</code></pre>
+<p>Separate target, categorial and continous data</p>
+<pre class="r"><code>target &lt;- train$target
+train$target &lt;- train$ID &lt;- NULL
+
+cat.var.names &lt;- colnames(train)[sapply(train, is.character)]
+cont.var.names &lt;- colnames(train)[sapply(train, is.numeric)]
+
+train.cat &lt;- train[, cat.var.names]
+test.cat &lt;- test[, cat.var.names]
+
+train.cont &lt;- train[, cont.var.names]
+test.cont &lt;- test[, cont.var.names]
+
+train.cat &lt;- as.data.frame(lapply(train.cat, factor))
+test.cat &lt;- as.data.frame(lapply(test.cat, factor))</code></pre>
+<p>Let’s take a first look at the data:</p>
+<pre class="r"><code>str(train.cont)</code></pre>
+<pre><code>## Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;:    114321 obs. of  112 variables:
+##  $ v1  : num  1.336 NA 0.944 0.797 NA ...
+##  $ v2  : num  8.73 NA 5.31 8.3 NA ...
+##  $ v4  : num  3.92 NA 4.41 4.23 NA ...
+##  $ v5  : num  7.92 9.19 5.33 11.63 NA ...
+##  $ v6  : num  2.6 NA 3.98 2.1 NA ...
+##  $ v7  : num  3.18 NA 3.93 1.99 NA ...
+##  $ v8  : num  0.0129 2.3016 0.0196 0.1719 NA ...
+##  $ v9  : num  10 NA 12.67 8.97 NA ...
+##  $ v10 : num  0.503 1.313 0.766 6.543 1.05 ...
+##  $ v11 : num  16.4 NA 14.8 16.3 NA ...
+##  $ v12 : num  6.09 6.51 6.38 9.65 6.32 ...
+##  $ v13 : num  2.87 NA 2.51 3.9 NA ...
+##  $ v14 : num  11.6 11.6 9.6 14.1 11 ...
+##  $ v15 : num  1.36 NA 1.98 1.95 NA ...
+##  $ v16 : num  8.57 NA 5.88 5.52 NA ...
+##  $ v17 : num  3.67 NA 3.17 3.61 NA ...
+##  $ v18 : num  0.107 NA 0.245 1.224 NA ...
+##  $ v19 : num  0.149 NA 0.144 0.232 NA ...
+##  $ v20 : num  18.9 NA 18 18.4 NA ...
+##  $ v21 : num  7.73 6.76 5.25 7.52 6.41 ...
+##  $ v23 : num  -1.72e-08 NA -2.79e-07 -4.81e-07 NA ...
+##  $ v25 : num  0.139 3.056 0.114 0.149 NA ...
+##  $ v26 : num  1.72 NA 2.24 1.31 NA ...
+##  $ v27 : num  3.39 NA 5.31 2.3 NA ...
+##  $ v28 : num  0.59 NA 0.836 8.927 NA ...
+##  $ v29 : num  8.88 NA 7.5 8.87 NA ...
+##  $ v32 : num  1.08 NA 1.45 1.59 NA ...
+##  $ v33 : num  1.01 NA 1.73 1.67 NA ...
+##  $ v34 : num  7.27 3.62 4.04 8.7 6.08 ...
+##  $ v35 : num  8.38 NA 7.96 8.9 NA ...
+##  $ v36 : num  11.3 14.6 12.7 11.3 NA ...
+##  $ v37 : num  0.455 NA 0.26 0.434 NA ...
+##  $ v38 : int  0 0 0 0 0 0 0 0 0 0 ...
+##  $ v39 : num  4.012 NA 7.379 0.287 NA ...
+##  $ v40 : num  7.71 14.31 13.08 11.52 10.14 ...
+##  $ v41 : num  7.65 NA 6.17 7.93 NA ...
+##  $ v42 : num  12.7 NA 12.3 12.9 NA ...
+##  $ v43 : num  2.02 NA 2.93 1.47 NA ...
+##  $ v44 : num  10.5 NA 8.9 12.7 NA ...
+##  $ v45 : num  9.85 NA 5.34 9.67 NA ...
+##  $ v46 : num  0.114 2.45 0.126 0.108 NA ...
+##  $ v48 : num  12.2 NA 12.7 12.2 NA ...
+##  $ v49 : num  8.09 NA 6.84 8.59 NA ...
+##  $ v50 : num  0.899 1.379 0.605 3.329 1.365 ...
+##  $ v51 : num  7.28 NA 9.64 4.78 NA ...
+##  $ v53 : num  16.7 NA 15.1 16.6 NA ...
+##  $ v54 : num  0.0371 1.1295 0.0856 0.1397 NA ...
+##  $ v55 : num  1.3 NA 0.765 1.178 NA ...
+##  $ v57 : num  3.97 NA 4.03 3.97 NA ...
+##  $ v58 : num  0.53 NA 4.28 1.73 NA ...
+##  $ v59 : num  10.89 NA 9.11 11.78 NA ...
+##  $ v60 : num  1.59 NA 2.15 1.23 NA ...
+##  $ v61 : num  15.9 NA 16.1 15.9 NA ...
+##  $ v62 : int  1 2 1 1 1 1 2 2 0 3 ...
+##  $ v63 : num  0.153 2.545 0.124 0.14 NA ...
+##  $ v64 : num  6.36 NA 5.52 6.29 NA ...
+##  $ v65 : num  18.3 NA 16.4 17 NA ...
+##  $ v67 : num  9.31 NA 8.37 9.7 NA ...
+##  $ v68 : num  15.2 NA 11 18.6 NA ...
+##  $ v69 : num  17.14 NA 5.88 9.43 NA ...
+##  $ v70 : num  11.78 12.05 8.46 13.59 NA ...
+##  $ v72 : int  1 2 3 2 1 1 2 2 0 3 ...
+##  $ v73 : num  1.61 NA 2.41 2.27 NA ...
+##  $ v76 : num  2.23 NA 1.96 2.19 NA ...
+##  $ v77 : num  7.29 NA 5.92 8.21 NA ...
+##  $ v78 : num  8.57 NA 11.76 13.45 NA ...
+##  $ v80 : num  3 NA 3.33 1.95 NA ...
+##  $ v81 : num  7.53 7.28 10.19 4.8 NA ...
+##  $ v82 : num  8.86 3.43 8.27 13.32 NA ...
+##  $ v83 : num  0.65 NA 1.53 1.68 NA ...
+##  $ v84 : num  1.3 NA 1.53 1.38 NA ...
+##  $ v85 : num  1.71 NA 2.43 1.59 NA ...
+##  $ v86 : num  0.866 NA 1.071 1.243 NA ...
+##  $ v87 : num  9.55 9.85 8.45 10.75 NA ...
+##  $ v88 : num  3.32 NA 3.37 1.41 NA ...
+##  $ v89 : num  0.0957 2.6786 0.1114 0.0391 NA ...
+##  $ v90 : num  0.905 NA 0.811 1.042 NA ...
+##  $ v92 : num  0.442 NA 0.271 0.764 NA ...
+##  $ v93 : num  5.81 NA 5.16 5.5 NA ...
+##  $ v94 : num  3.52 NA 4.21 3.42 NA ...
+##  $ v95 : num  0.462 NA 0.31 0.833 NA ...
+##  $ v96 : num  7.44 NA 5.66 7.38 NA ...
+##  $ v97 : num  5.45 NA 5.97 6.75 NA ...
+##  $ v98 : num  8.88 8.3 11.59 6.94 NA ...
+##  $ v99 : num  1.191 NA 0.842 1.335 NA ...
+##  $ v100: num  19.5 NA 15.5 18.3 NA ...
+##  $ v101: num  8.39 NA 5.88 8.51 NA ...
+##  $ v102: num  2.76 NA 3.29 2.5 NA ...
+##  $ v103: num  4.37 NA 5.92 4.87 NA ...
+##  $ v104: num  1.57 NA 1.67 2.57 NA ...
+##  $ v105: num  0.00729 1.50533 0.00827 0.11397 NA ...
+##  $ v106: num  12.6 NA 11.7 12.6 NA ...
+##  $ v108: num  2.38 1.83 1.38 2.23 NA ...
+##  $ v109: num  3.93 4.25 1.18 1.99 NA ...
+##  $ v111: num  0.433 NA 3.367 2.644 NA ...
+##  $ v114: num  15.6 10.3 11.2 13.8 14.1 ...
+##  $ v115: num  2.86 NA 12.94 10.57 NA ...
+##  $ v116: num  1.95 NA 3.13 1.51 NA ...
+##  $ v117: num  6.59 10.6 3.48 4.95 NA ...
+##   [list output truncated]</code></pre>
+<pre class="r"><code>str(test.cont)</code></pre>
+<pre><code>## Classes &#39;tbl_df&#39;, &#39;tbl&#39; and &#39;data.frame&#39;:    114393 obs. of  112 variables:
+##  $ v1  : num  1.38 NA -4.90e-07 2.66 1.25 ...
+##  $ v2  : num  11.36 NA 8.2 3.04 11.28 ...
+##  $ v4  : num  4.2 NA 4.54 1.66 4.64 ...
+##  $ v5  : num  6.58 NA 6.55 9.77 8.52 ...
+##  $ v6  : num  2.08 NA 1.56 2.08 2.3 ...
+##  $ v7  : num  1.78 NA 2.47 1.43 3.51 ...
+##  $ v8  : num  0.01109 NA 0.00716 1.25216 0.07426 ...
+##  $ v9  : num  9.52 NA 7.14 7.96 7.61 ...
+##  $ v10 : num  1.31 1.29 1.58 1.58 1.05 ...
+##  $ v11 : num  16.9 NA 15.1 14.4 15.6 ...
+##  $ v12 : num  6.96 6.62 6.89 6.86 6.27 ...
+##  $ v13 : num  3.11 NA 1.9 5.09 2.5 ...
+##  $ v14 : num  12.2 10.8 13.3 10.4 11.4 ...
+##  $ v15 : num  1.77 NA 1.3 2.8 1.35 ...
+##  $ v16 : num  2.86 NA 3.33 7.3 3.02 ...
+##  $ v17 : num  3.49 NA 3.18 1.12 4.97 ...
+##  $ v18 : num  0.0968 NA 0.0707 0.6085 0.5308 ...
+##  $ v19 : num  0.225 NA 0.172 0.477 0.149 ...
+##  $ v20 : num  17.9 NA 17.5 15.3 18.7 ...
+##  $ v21 : num  7.44 5.9 8.25 5.54 6.74 ...
+##  $ v23 : num  9.56e-07 NA -2.14e-07 5.86e-07 -2.73e-07 ...
+##  $ v25 : num  0.0692 NA 0.0596 1.78 0.1587 ...
+##  $ v26 : num  0.954 NA 2.857 1.407 2.587 ...
+##  $ v27 : num  4.39 NA 2.21 1.35 3.26 ...
+##  $ v28 : num  0.573 NA 0.327 5.347 3.787 ...
+##  $ v29 : num  6.99 NA 8.31 6.47 8.86 ...
+##  $ v32 : num  1.115 NA 0.974 2.362 0.999 ...
+##  $ v33 : num  2.08 NA 1.56 3.85 1.2 ...
+##  $ v34 : num  5.23 8.39 7.96 6.22 5.48 ...
+##  $ v35 : num  8.18 NA 8.31 6.63 7.74 ...
+##  $ v36 : num  12.2 NA 12.2 13.7 10.8 ...
+##  $ v37 : num  8.33e-01 NA -5.25e-07 2.01 3.86e-01 ...
+##  $ v38 : int  0 4 0 0 0 0 0 0 0 0 ...
+##  $ v39 : num  2.84 NA 6.71 8.25e-07 4.90e-01 ...
+##  $ v40 : num  11.75 6.74 7.7 10.44 11.1 ...
+##  $ v41 : num  6.77 NA 6.88 6.06 7.38 ...
+##  $ v42 : num  10.9 NA 12.1 13.2 13.1 ...
+##  $ v43 : num  1.3 NA 3.43 1.83 2.98 ...
+##  $ v44 : num  10.61 NA 10.22 7.64 12.59 ...
+##  $ v45 : num  9.42 NA 7.91 12.85 9.24 ...
+##  $ v46 : num  0.1005 NA 0.0822 1.5042 0.128 ...
+##  $ v48 : num  12.8 NA 12.8 16.8 10.6 ...
+##  $ v49 : num  7.51 NA 7.79 7.8 7.88 ...
+##  $ v50 : num  0.119 1.027 0.841 0.946 1.494 ...
+##  $ v51 : num  8.59 NA 9.89 8.58 5.51 ...
+##  $ v53 : num  17 NA 15 15.4 15.7 ...
+##  $ v54 : num  0.0443 NA 0.0201 1.3513 0.063 ...
+##  $ v55 : num  1.338 NA 0.779 3.813 0.88 ...
+##  $ v57 : num  2.6 NA 5.45 4.36 5.26 ...
+##  $ v58 : num  2.92e-01 NA -8.48e-07 1.95e+01 7.72e-01 ...
+##  $ v59 : num  9.04 NA 9.45 10.43 11.05 ...
+##  $ v60 : num  0.818 NA 2.857 1.128 2.462 ...
+##  $ v61 : num  14.9 NA 15.6 10.9 16.9 ...
+##  $ v62 : int  1 1 1 1 2 1 3 1 1 1 ...
+##  $ v63 : num  0.0915 NA 0.0837 1.8097 0.1235 ...
+##  $ v64 : num  5.97 NA 5.63 2.18 8.19 ...
+##  $ v65 : num  15.6 NA 15.8 12.4 17.5 ...
+##  $ v67 : num  8.03 NA 9.09 8.4 9.47 ...
+##  $ v68 : num  15.9 NA 13.2 17.7 18.7 ...
+##  $ v69 : num  8.57 NA 6.67 13.2 9.81 ...
+##  $ v70 : num  11.22 NA 7.86 14.12 13.15 ...
+##  $ v72 : int  1 5 1 1 2 1 3 1 2 1 ...
+##  $ v73 : num  1.93 NA 1.49 3.91 1.47 ...
+##  $ v76 : num  2.147 NA 1.91 0.645 3.128 ...
+##  $ v77 : num  6.17 NA 5.71 6.37 7.8 ...
+##  $ v78 : num  15.7 NA 16.7 11.2 14.7 ...
+##  $ v80 : num  1.9 NA 1.43 3.56 1.03 ...
+##  $ v81 : num  8.92 NA 8.95 6.28 6.84 ...
+##  $ v82 : num  8.75 NA 8.74 3.26 8.72 ...
+##  $ v83 : num  2.45 NA 1.95 3.24 1.32 ...
+##  $ v84 : num  0.892 NA 0.779 4.221 0.542 ...
+##  $ v85 : num  1.86 NA 1.86 6 0.952 ...
+##  $ v86 : num  0.892 NA 0.779 1.307 0.863 ...
+##  $ v87 : num  7.9 NA 5.89 13.04 12.07 ...
+##  $ v88 : num  1.784 NA 5.714 0.432 2.235 ...
+##  $ v89 : num  0.1053 NA 0.0439 2.0359 0.15 ...
+##  $ v90 : num  0.989 NA 0.919 1.495 0.993 ...
+##  $ v92 : num  0.658 NA 0.553 0.775 0.39 ...
+##  $ v93 : num  4.93 NA 4.35 3.18 5.63 ...
+##  $ v94 : num  2.99 NA 3.16 5.07 3.89 ...
+##  $ v95 : num  0.76 NA 0.605 1.021 0.418 ...
+##  $ v96 : num  5.95 NA 6.23 4.98 6.94 ...
+##  $ v97 : num  5 NA 12.63 8.6 7.65 ...
+##  $ v98 : num  10.01 NA 10.21 5.74 8.59 ...
+##  $ v99 : num  0.818 NA 0.952 0.689 1.076 ...
+##  $ v100: num  19.708 NA 19.8 0.116 19.228 ...
+##  $ v101: num  4.19 NA 6.54 3.63 6.61 ...
+##  $ v102: num  1.874 NA 0.763 NA 1.494 ...
+##  $ v103: num  4.13 NA 4.92 7.49 4.93 ...
+##  $ v104: num  1.7 NA 1.98 4.31 1.91 ...
+##  $ v105: num  0.00453 NA 0.00279 1.04864 0.05513 ...
+##  $ v106: num  11.69 NA 11.75 5.96 14.67 ...
+##  $ v108: num  1.5 NA 1.19 2.69 2.47 ...
+##  $ v109: num  2.12 NA 2.09 6.21 5.31 ...
+##  $ v111: num  3.57 NA 3.12 3.93 1.83 ...
+##  $ v114: num  12.2 16.3 15.6 13.7 13.4 ...
+##  $ v115: num  11.4 NA 13.3 6.8 10.2 ...
+##  $ v116: num  1.28 NA 3.75 1.9 3.03 ...
+##  $ v117: num  4.78 NA 4.74 12.45 7.64 ...
+##   [list output truncated]</code></pre>
+<pre class="r"><code>summary(train.cont)</code></pre>
+<pre><code>##        v1              v2              v4              v5       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.91   1st Qu.: 5.32   1st Qu.: 3.49   1st Qu.: 7.61  
+##  Median : 1.47   Median : 7.02   Median : 4.21   Median : 8.67  
+##  Mean   : 1.63   Mean   : 7.46   Mean   : 4.15   Mean   : 8.74  
+##  3rd Qu.: 2.14   3rd Qu.: 9.47   3rd Qu.: 4.83   3rd Qu.: 9.77  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49796   NA&#39;s   :49796   NA&#39;s   :48624  
+##        v6              v7              v8              v9       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 2.07   1st Qu.: 2.10   1st Qu.: 0.09   1st Qu.: 7.85  
+##  Median : 2.41   Median : 2.45   Median : 0.39   Median : 9.06  
+##  Mean   : 2.44   Mean   : 2.48   Mean   : 1.50   Mean   : 9.03  
+##  3rd Qu.: 2.78   3rd Qu.: 2.83   3rd Qu.: 1.63   3rd Qu.:10.23  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49832   NA&#39;s   :48619   NA&#39;s   :49851  
+##       v10              v11             v12              v13       
+##  Min.   : 0.000   Min.   : 0.00   Min.   : 0.000   Min.   : 0.00  
+##  1st Qu.: 1.050   1st Qu.:15.00   1st Qu.: 6.322   1st Qu.: 3.07  
+##  Median : 1.313   Median :15.50   Median : 6.613   Median : 3.59  
+##  Mean   : 1.883   Mean   :15.45   Mean   : 6.881   Mean   : 3.80  
+##  3rd Qu.: 2.101   3rd Qu.:15.95   3rd Qu.: 7.020   3rd Qu.: 4.29  
+##  Max.   :18.534   Max.   :20.00   Max.   :18.711   Max.   :20.00  
+##  NA&#39;s   :84       NA&#39;s   :49836   NA&#39;s   :86       NA&#39;s   :49832  
+##       v14                 v15             v16             v17       
+##  Min.   :-0.000001   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:11.256017   1st Qu.: 1.61   1st Qu.: 3.86   1st Qu.: 2.70  
+##  Median :11.967825   Median : 1.99   Median : 4.93   Median : 3.55  
+##  Mean   :12.094279   Mean   : 2.08   Mean   : 4.92   Mean   : 3.83  
+##  3rd Qu.:12.715774   3rd Qu.: 2.42   3rd Qu.: 5.96   3rd Qu.: 4.51  
+##  Max.   :20.000000   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :4           NA&#39;s   :49836   NA&#39;s   :49895   NA&#39;s   :49796  
+##       v18             v19             v20             v21         
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 1.52   Min.   : 0.1062  
+##  1st Qu.: 0.51   1st Qu.: 0.17   1st Qu.:17.33   1st Qu.: 6.4155  
+##  Median : 0.77   Median : 0.20   Median :18.04   Median : 7.0454  
+##  Mean   : 0.84   Mean   : 0.22   Mean   :17.77   Mean   : 7.0297  
+##  3rd Qu.: 1.07   3rd Qu.: 0.24   3rd Qu.:18.54   3rd Qu.: 7.6706  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :19.2961  
+##  NA&#39;s   :49832   NA&#39;s   :49843   NA&#39;s   :49840   NA&#39;s   :611      
+##       v23             v25             v26             v27       
+##  Min.   : 0.00   Min.   : 0.04   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.00   1st Qu.: 0.15   1st Qu.: 1.51   1st Qu.: 2.20  
+##  Median : 0.00   Median : 0.47   Median : 1.83   Median : 2.67  
+##  Mean   : 1.09   Mean   : 1.70   Mean   : 1.88   Mean   : 2.74  
+##  3rd Qu.: 0.00   3rd Qu.: 1.95   3rd Qu.: 2.18   3rd Qu.: 3.22  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :50675   NA&#39;s   :48619   NA&#39;s   :49832   NA&#39;s   :49832  
+##       v28             v29             v32             v33       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 3.49   1st Qu.: 7.43   1st Qu.: 1.26   1st Qu.: 1.47  
+##  Median : 5.04   Median : 8.30   Median : 1.56   Median : 1.95  
+##  Mean   : 5.09   Mean   : 8.21   Mean   : 1.62   Mean   : 2.16  
+##  3rd Qu.: 6.57   3rd Qu.: 9.09   3rd Qu.: 1.90   3rd Qu.: 2.63  
+##  Max.   :19.85   Max.   :20.00   Max.   :17.56   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49832   NA&#39;s   :49832   NA&#39;s   :49832  
+##       v34              v35             v36             v37       
+##  Min.   : 0.000   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 5.054   1st Qu.: 7.25   1st Qu.:11.77   1st Qu.: 0.40  
+##  Median : 6.537   Median : 8.07   Median :13.77   Median : 0.64  
+##  Mean   : 6.406   Mean   : 8.12   Mean   :13.38   Mean   : 0.74  
+##  3rd Qu.: 7.703   3rd Qu.: 8.94   3rd Qu.:15.32   3rd Qu.: 0.95  
+##  Max.   :20.000   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :111      NA&#39;s   :49832   NA&#39;s   :48624   NA&#39;s   :49843  
+##       v38                v39             v40              v41       
+##  Min.   : 0.00000   Min.   : 0.00   Min.   : 0.000   Min.   : 0.00  
+##  1st Qu.: 0.00000   1st Qu.: 0.13   1st Qu.: 8.408   1st Qu.: 6.54  
+##  Median : 0.00000   Median : 0.38   Median :10.334   Median : 7.20  
+##  Mean   : 0.09093   Mean   : 1.24   Mean   :10.466   Mean   : 7.18  
+##  3rd Qu.: 0.00000   3rd Qu.: 1.19   3rd Qu.:12.765   3rd Qu.: 7.83  
+##  Max.   :12.00000   Max.   :19.92   Max.   :20.000   Max.   :20.00  
+##                     NA&#39;s   :49836   NA&#39;s   :111      NA&#39;s   :49832  
+##       v42             v43             v44             v45       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:12.34   1st Qu.: 1.79   1st Qu.: 9.58   1st Qu.: 7.83  
+##  Median :12.93   Median : 2.15   Median :10.78   Median : 9.16  
+##  Mean   :12.92   Mean   : 2.22   Mean   :10.80   Mean   : 9.14  
+##  3rd Qu.:13.49   3rd Qu.: 2.56   3rd Qu.:12.02   3rd Qu.:10.42  
+##  Max.   :20.00   Max.   :20.00   Max.   :19.83   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49836   NA&#39;s   :49796   NA&#39;s   :49832  
+##       v46             v48             v49             v50         
+##  Min.   : 0.07   Min.   : 0.00   Min.   : 0.00   Min.   : 0.0000  
+##  1st Qu.: 0.12   1st Qu.:11.22   1st Qu.: 7.47   1st Qu.: 0.6588  
+##  Median : 0.44   Median :12.41   Median : 8.02   Median : 1.2119  
+##  Mean   : 1.63   Mean   :12.54   Mean   : 8.02   Mean   : 1.5043  
+##  3rd Qu.: 1.82   3rd Qu.:13.78   3rd Qu.: 8.56   3rd Qu.: 2.0072  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.0000  
+##  NA&#39;s   :48619   NA&#39;s   :49796   NA&#39;s   :49832   NA&#39;s   :86       
+##       v51             v53             v54             v55       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.01   Min.   : 0.00  
+##  1st Qu.: 5.60   1st Qu.:15.28   1st Qu.: 0.09   1st Qu.: 0.98  
+##  Median : 7.13   Median :15.77   Median : 0.31   Median : 1.37  
+##  Mean   : 7.20   Mean   :15.71   Mean   : 1.25   Mean   : 1.56  
+##  3rd Qu.: 8.64   3rd Qu.:16.22   3rd Qu.: 1.41   3rd Qu.: 1.94  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :50678   NA&#39;s   :49836   NA&#39;s   :48619   NA&#39;s   :49832  
+##       v57             v58             v59             v60       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 3.65   1st Qu.: 1.50   1st Qu.: 9.06   1st Qu.: 1.36  
+##  Median : 4.07   Median : 5.33   Median :10.54   Median : 1.67  
+##  Mean   : 4.08   Mean   : 7.70   Mean   :10.59   Mean   : 1.71  
+##  3rd Qu.: 4.49   3rd Qu.:13.96   3rd Qu.:12.03   3rd Qu.: 2.01  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49836   NA&#39;s   :49796   NA&#39;s   :49832  
+##       v61             v62             v63             v64       
+##  Min.   : 0.00   Min.   :0.000   Min.   : 0.05   Min.   : 0.00  
+##  1st Qu.:13.60   1st Qu.:1.000   1st Qu.: 0.14   1st Qu.: 4.79  
+##  Median :15.08   Median :1.000   Median : 0.46   Median : 6.11  
+##  Mean   :14.58   Mean   :1.031   Mean   : 1.69   Mean   : 6.34  
+##  3rd Qu.:16.11   3rd Qu.:1.000   3rd Qu.: 1.85   3rd Qu.: 7.52  
+##  Max.   :18.85   Max.   :7.000   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49796                   NA&#39;s   :48619   NA&#39;s   :49796  
+##       v65             v67             v68             v69       
+##  Min.   : 0.66   Min.   : 0.00   Min.   : 1.50   Min.   : 0.00  
+##  1st Qu.:15.03   1st Qu.: 8.58   1st Qu.:17.08   1st Qu.: 8.39  
+##  Median :16.26   Median : 9.31   Median :18.27   Median : 9.52  
+##  Mean   :15.85   Mean   : 9.29   Mean   :17.56   Mean   : 9.45  
+##  3rd Qu.:17.16   3rd Qu.: 9.99   3rd Qu.:18.91   3rd Qu.:10.54  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49840   NA&#39;s   :49832   NA&#39;s   :49836   NA&#39;s   :49895  
+##       v70             v72              v73             v76       
+##  Min.   : 0.43   Min.   : 0.000   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:10.80   1st Qu.: 1.000   1st Qu.: 1.90   1st Qu.: 1.63  
+##  Median :12.49   Median : 1.000   Median : 2.33   Median : 2.17  
+##  Mean   :12.27   Mean   : 1.432   Mean   : 2.43   Mean   : 2.41  
+##  3rd Qu.:13.99   3rd Qu.: 2.000   3rd Qu.: 2.85   3rd Qu.: 2.81  
+##  Max.   :19.82   Max.   :12.000   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :48636                    NA&#39;s   :49836   NA&#39;s   :49796  
+##       v77             v78             v80             v81       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 6.50   1st Qu.:12.31   1st Qu.: 1.45   1st Qu.: 5.98  
+##  Median : 7.38   Median :13.33   Median : 2.09   Median : 7.52  
+##  Mean   : 7.31   Mean   :13.33   Mean   : 2.21   Mean   : 7.29  
+##  3rd Qu.: 8.16   3rd Qu.:14.39   3rd Qu.: 2.86   3rd Qu.: 8.78  
+##  Max.   :15.97   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49895   NA&#39;s   :49851   NA&#39;s   :48624  
+##       v82             v83             v84             v85       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 3.39   1st Qu.: 1.43   1st Qu.: 0.96   1st Qu.: 1.84  
+##  Median : 3.69   Median : 1.94   Median : 1.42   Median : 2.59  
+##  Mean   : 6.21   Mean   : 2.17   Mean   : 1.61   Mean   : 2.82  
+##  3rd Qu.: 8.79   3rd Qu.: 2.67   3rd Qu.: 2.07   3rd Qu.: 3.57  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :48624   NA&#39;s   :49832   NA&#39;s   :49832   NA&#39;s   :50682  
+##       v86             v87             v88             v89       
+##  Min.   : 0.00   Min.   : 0.87   Min.   : 0.00   Min.   : 0.02  
+##  1st Qu.: 0.94   1st Qu.: 8.06   1st Qu.: 1.18   1st Qu.: 0.10  
+##  Median : 1.16   Median :10.00   Median : 1.76   Median : 0.33  
+##  Mean   : 1.22   Mean   :10.18   Mean   : 1.92   Mean   : 1.52  
+##  3rd Qu.: 1.42   3rd Qu.:12.23   3rd Qu.: 2.46   3rd Qu.: 1.75  
+##  Max.   :17.56   Max.   :19.84   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :48663   NA&#39;s   :49832   NA&#39;s   :48619  
+##       v90             v92             v93             v94       
+##  Min.   :0.00    Min.   :0.00    Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:0.86    1st Qu.:0.44    1st Qu.: 4.55   1st Qu.: 3.33  
+##  Median :0.97    Median :0.54    Median : 5.30   Median : 3.74  
+##  Mean   :0.97    Mean   :0.58    Mean   : 5.48   Mean   : 3.85  
+##  3rd Qu.:1.06    3rd Qu.:0.68    3rd Qu.: 6.22   3rd Qu.: 4.23  
+##  Max.   :6.31    Max.   :8.92    Max.   :20.00   Max.   :19.02  
+##  NA&#39;s   :49836   NA&#39;s   :49843   NA&#39;s   :49832   NA&#39;s   :49832  
+##       v95             v96             v97             v98       
+##  Min.   :0.00    Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:0.50    1st Qu.: 5.76   1st Qu.: 6.32   1st Qu.: 6.13  
+##  Median :0.62    Median : 6.51   Median : 7.45   Median : 7.64  
+##  Mean   :0.67    Mean   : 6.46   Mean   : 7.62   Mean   : 7.67  
+##  3rd Qu.:0.77    3rd Qu.: 7.23   3rd Qu.: 8.78   3rd Qu.: 9.06  
+##  Max.   :9.07    Max.   :20.00   Max.   :20.00   Max.   :19.06  
+##  NA&#39;s   :49843   NA&#39;s   :49832   NA&#39;s   :49843   NA&#39;s   :48654  
+##       v99             v100            v101            v102      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.93   1st Qu.: 5.75   1st Qu.: 5.26   1st Qu.: 1.79  
+##  Median : 1.24   Median :14.48   Median : 6.62   Median : 2.46  
+##  Mean   : 1.25   Mean   :12.09   Mean   : 6.87   Mean   : 2.89  
+##  3rd Qu.: 1.55   3rd Qu.:18.32   3rd Qu.: 8.24   3rd Qu.: 3.41  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49836   NA&#39;s   :49796   NA&#39;s   :51316  
+##       v103            v104            v105            v106      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 4.50   1st Qu.: 2.14   1st Qu.: 0.06   1st Qu.:10.05  
+##  Median : 5.13   Median : 2.51   Median : 0.24   Median :12.09  
+##  Mean   : 5.30   Mean   : 2.64   Mean   : 1.08   Mean   :11.79  
+##  3rd Qu.: 5.87   3rd Qu.: 2.95   3rd Qu.: 1.02   3rd Qu.:13.77  
+##  Max.   :18.78   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49832   NA&#39;s   :49832   NA&#39;s   :48658   NA&#39;s   :49796  
+##       v108            v109            v111            v114      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 1.53   1st Qu.: 1.84   1st Qu.: 2.32   1st Qu.:12.00  
+##  Median : 1.98   Median : 3.09   Median : 3.11   Median :14.04  
+##  Mean   : 2.15   Mean   : 4.18   Mean   : 3.37   Mean   :13.57  
+##  3rd Qu.: 2.54   3rd Qu.: 5.15   3rd Qu.: 4.12   3rd Qu.:15.37  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :48624   NA&#39;s   :48624   NA&#39;s   :49832   NA&#39;s   :30     
+##       v115            v116            v117            v118      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 9.46   1st Qu.: 1.85   1st Qu.: 5.76   1st Qu.: 6.98  
+##  Median :10.48   Median : 2.22   Median : 8.07   Median : 8.14  
+##  Mean   :10.55   Mean   : 2.29   Mean   : 8.30   Mean   : 8.36  
+##  3rd Qu.:11.61   3rd Qu.: 2.65   3rd Qu.:10.50   3rd Qu.: 9.57  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49895   NA&#39;s   :49836   NA&#39;s   :48624   NA&#39;s   :49843  
+##       v119            v120            v121            v122      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.32   1st Qu.: 0.78   1st Qu.: 1.79   1st Qu.: 5.65  
+##  Median : 1.46   Median : 1.14   Median : 2.44   Median : 6.75  
+##  Mean   : 3.17   Mean   : 1.29   Mean   : 2.74   Mean   : 6.82  
+##  3rd Qu.: 4.17   3rd Qu.: 1.65   3rd Qu.: 3.38   3rd Qu.: 7.91  
+##  Max.   :20.00   Max.   :10.39   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :50680   NA&#39;s   :49836   NA&#39;s   :49840   NA&#39;s   :49851  
+##       v123            v124            v126            v127      
+##  Min.   : 0.02   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 1.96   1st Qu.: 0.02   1st Qu.: 1.42   1st Qu.: 2.10  
+##  Median : 2.74   Median : 0.14   Median : 1.61   Median : 2.96  
+##  Mean   : 3.55   Mean   : 0.92   Mean   : 1.67   Mean   : 3.24  
+##  3rd Qu.: 4.08   3rd Qu.: 0.87   3rd Qu.: 1.84   3rd Qu.: 4.11  
+##  Max.   :19.69   Max.   :20.00   Max.   :15.63   Max.   :20.00  
+##  NA&#39;s   :50678   NA&#39;s   :48619   NA&#39;s   :49832   NA&#39;s   :49832  
+##       v128            v129              v130            v131      
+##  Min.   : 0.00   Min.   : 0.0000   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 1.39   1st Qu.: 0.0000   1st Qu.: 1.11   1st Qu.: 1.01  
+##  Median : 1.80   Median : 0.0000   Median : 1.56   Median : 1.59  
+##  Mean   : 2.03   Mean   : 0.3101   Mean   : 1.93   Mean   : 1.74  
+##  3rd Qu.: 2.39   3rd Qu.: 0.0000   3rd Qu.: 2.33   3rd Qu.: 2.26  
+##  Max.   :20.00   Max.   :11.0000   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :48624                     NA&#39;s   :49843   NA&#39;s   :49895</code></pre>
+<pre class="r"><code>summary(test.cont)</code></pre>
+<pre><code>##        v1              v2              v4              v5       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.42  
+##  1st Qu.: 0.92   1st Qu.: 5.30   1st Qu.: 3.48   1st Qu.: 7.59  
+##  Median : 1.46   Median : 6.99   Median : 4.20   Median : 8.65  
+##  Mean   : 1.63   Mean   : 7.44   Mean   : 4.14   Mean   : 8.74  
+##  3rd Qu.: 2.13   3rd Qu.: 9.42   3rd Qu.: 4.83   3rd Qu.: 9.78  
+##  Max.   :14.80   Max.   :19.66   Max.   :20.00   Max.   :19.99  
+##  NA&#39;s   :49879   NA&#39;s   :49839   NA&#39;s   :49839   NA&#39;s   :48642  
+##        v6              v7              v8              v9       
+##  Min.   :0.00    Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:2.06    1st Qu.: 2.10   1st Qu.: 0.09   1st Qu.: 7.84  
+##  Median :2.41    Median : 2.45   Median : 0.38   Median : 9.07  
+##  Mean   :2.44    Mean   : 2.48   Mean   : 1.51   Mean   : 9.03  
+##  3rd Qu.:2.78    3rd Qu.: 2.83   3rd Qu.: 1.65   3rd Qu.:10.24  
+##  Max.   :7.29    Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :49879   NA&#39;s   :48636   NA&#39;s   :49886  
+##       v10              v11             v12              v13       
+##  Min.   : 0.000   Min.   : 0.00   Min.   : 1.349   Min.   : 0.00  
+##  1st Qu.: 1.050   1st Qu.:15.00   1st Qu.: 6.322   1st Qu.: 3.07  
+##  Median : 1.313   Median :15.49   Median : 6.612   Median : 3.60  
+##  Mean   : 1.882   Mean   :15.45   Mean   : 6.880   Mean   : 3.81  
+##  3rd Qu.: 2.101   3rd Qu.:15.95   3rd Qu.: 7.011   3rd Qu.: 4.30  
+##  Max.   :20.000   Max.   :20.00   Max.   :20.000   Max.   :20.00  
+##  NA&#39;s   :82       NA&#39;s   :49881   NA&#39;s   :84       NA&#39;s   :49879  
+##       v14                 v15             v16             v17       
+##  Min.   :-0.000001   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:11.247914   1st Qu.: 1.61   1st Qu.: 3.85   1st Qu.: 2.69  
+##  Median :11.967826   Median : 1.99   Median : 4.93   Median : 3.55  
+##  Mean   :12.098856   Mean   : 2.08   Mean   : 4.92   Mean   : 3.82  
+##  3rd Qu.:12.728410   3rd Qu.: 2.42   3rd Qu.: 5.95   3rd Qu.: 4.48  
+##  Max.   :20.000001   Max.   :13.89   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :2           NA&#39;s   :49881   NA&#39;s   :49944   NA&#39;s   :49839  
+##       v18             v19             v20             v21        
+##  Min.   : 0.00   Min.   : 0.02   Min.   : 0.00   Min.   : 0.000  
+##  1st Qu.: 0.51   1st Qu.: 0.17   1st Qu.:17.32   1st Qu.: 6.420  
+##  Median : 0.78   Median : 0.20   Median :18.04   Median : 7.051  
+##  Mean   : 0.85   Mean   : 0.22   Mean   :17.77   Mean   : 7.039  
+##  3rd Qu.: 1.07   3rd Qu.: 0.24   3rd Qu.:18.55   3rd Qu.: 7.675  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.000  
+##  NA&#39;s   :49879   NA&#39;s   :49887   NA&#39;s   :49882   NA&#39;s   :573     
+##       v23             v25             v26             v27       
+##  Min.   : 0.0    Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.0    1st Qu.: 0.15   1st Qu.: 1.51   1st Qu.: 2.20  
+##  Median : 0.0    Median : 0.46   Median : 1.82   Median : 2.67  
+##  Mean   : 1.1    Mean   : 1.71   Mean   : 1.88   Mean   : 2.74  
+##  3rd Qu.: 0.0    3rd Qu.: 1.96   3rd Qu.: 2.18   3rd Qu.: 3.21  
+##  Max.   :20.0    Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :50713   NA&#39;s   :48636   NA&#39;s   :49879   NA&#39;s   :49879  
+##       v28             v29             v32             v33       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   :0.00   
+##  1st Qu.: 3.46   1st Qu.: 7.42   1st Qu.: 1.26   1st Qu.:1.47   
+##  Median : 5.05   Median : 8.30   Median : 1.56   Median :1.95   
+##  Mean   : 5.11   Mean   : 8.21   Mean   : 1.62   Mean   :2.17   
+##  3rd Qu.: 6.62   3rd Qu.: 9.09   3rd Qu.: 1.90   3rd Qu.:2.64   
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :8.85   
+##  NA&#39;s   :49879   NA&#39;s   :49879   NA&#39;s   :49879   NA&#39;s   :49879  
+##       v34               v35             v36             v37       
+##  Min.   : 0.7887   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 5.0589   1st Qu.: 7.26   1st Qu.:11.75   1st Qu.: 0.41  
+##  Median : 6.5357   Median : 8.07   Median :13.74   Median : 0.64  
+##  Mean   : 6.4049   Mean   : 8.12   Mean   :13.36   Mean   : 0.74  
+##  3rd Qu.: 7.7015   3rd Qu.: 8.93   3rd Qu.:15.32   3rd Qu.: 0.95  
+##  Max.   :18.9974   Max.   :16.36   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :104       NA&#39;s   :49879   NA&#39;s   :48642   NA&#39;s   :49887  
+##       v38                v39             v40               v41       
+##  Min.   : 0.00000   Min.   : 0.00   Min.   : 0.1874   Min.   : 0.00  
+##  1st Qu.: 0.00000   1st Qu.: 0.13   1st Qu.: 8.4097   1st Qu.: 6.53  
+##  Median : 0.00000   Median : 0.38   Median :10.3364   Median : 7.21  
+##  Mean   : 0.08802   Mean   : 1.25   Mean   :10.4674   Mean   : 7.18  
+##  3rd Qu.: 0.00000   3rd Qu.: 1.19   3rd Qu.:12.7719   3rd Qu.: 7.83  
+##  Max.   :12.00000   Max.   :20.00   Max.   :19.0145   Max.   :13.81  
+##                     NA&#39;s   :49880   NA&#39;s   :104       NA&#39;s   :49879  
+##       v42             v43             v44             v45       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:12.35   1st Qu.: 1.78   1st Qu.: 9.57   1st Qu.: 7.83  
+##  Median :12.94   Median : 2.15   Median :10.77   Median : 9.15  
+##  Mean   :12.93   Mean   : 2.21   Mean   :10.78   Mean   : 9.14  
+##  3rd Qu.:13.49   3rd Qu.: 2.56   3rd Qu.:11.99   3rd Qu.:10.41  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :49881   NA&#39;s   :49839   NA&#39;s   :49879  
+##       v46             v48             v49             v50         
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.0000  
+##  1st Qu.: 0.12   1st Qu.:11.24   1st Qu.: 7.48   1st Qu.: 0.6588  
+##  Median : 0.43   Median :12.41   Median : 8.03   Median : 1.2119  
+##  Mean   : 1.64   Mean   :12.55   Mean   : 8.02   Mean   : 1.5079  
+##  3rd Qu.: 1.82   3rd Qu.:13.79   3rd Qu.: 8.55   3rd Qu.: 2.0160  
+##  Max.   :20.00   Max.   :20.00   Max.   :14.20   Max.   :15.3635  
+##  NA&#39;s   :48636   NA&#39;s   :49839   NA&#39;s   :49879   NA&#39;s   :84       
+##       v51             v53             v54             v55       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   :0.00   
+##  1st Qu.: 5.59   1st Qu.:15.27   1st Qu.: 0.09   1st Qu.:0.98   
+##  Median : 7.13   Median :15.77   Median : 0.31   Median :1.37   
+##  Mean   : 7.20   Mean   :15.71   Mean   : 1.26   Mean   :1.56   
+##  3rd Qu.: 8.66   3rd Qu.:16.22   3rd Qu.: 1.42   3rd Qu.:1.95   
+##  Max.   :19.58   Max.   :20.00   Max.   :20.00   Max.   :8.93   
+##  NA&#39;s   :50717   NA&#39;s   :49881   NA&#39;s   :48636   NA&#39;s   :49879  
+##       v57             v58             v59             v60       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 3.65   1st Qu.: 1.49   1st Qu.: 9.03   1st Qu.: 1.36  
+##  Median : 4.07   Median : 5.34   Median :10.51   Median : 1.66  
+##  Mean   : 4.08   Mean   : 7.71   Mean   :10.58   Mean   : 1.71  
+##  3rd Qu.: 4.48   3rd Qu.:14.09   3rd Qu.:12.02   3rd Qu.: 2.01  
+##  Max.   :13.33   Max.   :20.00   Max.   :19.77   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :49880   NA&#39;s   :49839   NA&#39;s   :49879  
+##       v61             v62             v63             v64       
+##  Min.   : 0.00   Min.   :0.000   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:13.58   1st Qu.:1.000   1st Qu.: 0.14   1st Qu.: 4.77  
+##  Median :15.07   Median :1.000   Median : 0.46   Median : 6.11  
+##  Mean   :14.58   Mean   :1.031   Mean   : 1.69   Mean   : 6.33  
+##  3rd Qu.:16.10   3rd Qu.:1.000   3rd Qu.: 1.85   3rd Qu.: 7.49  
+##  Max.   :20.00   Max.   :7.000   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49839                   NA&#39;s   :48636   NA&#39;s   :49839  
+##       v65             v67             v68             v69       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:15.02   1st Qu.: 8.58   1st Qu.:17.06   1st Qu.: 8.41  
+##  Median :16.26   Median : 9.32   Median :18.26   Median : 9.51  
+##  Mean   :15.84   Mean   : 9.29   Mean   :17.54   Mean   : 9.45  
+##  3rd Qu.:17.16   3rd Qu.:10.00   3rd Qu.:18.91   3rd Qu.:10.54  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49882   NA&#39;s   :49879   NA&#39;s   :49880   NA&#39;s   :49944  
+##       v70             v72              v73             v76       
+##  Min.   : 0.00   Min.   : 0.000   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.:10.80   1st Qu.: 1.000   1st Qu.: 1.90   1st Qu.: 1.62  
+##  Median :12.49   Median : 1.000   Median : 2.33   Median : 2.17  
+##  Mean   :12.27   Mean   : 1.426   Mean   : 2.44   Mean   : 2.40  
+##  3rd Qu.:14.00   3rd Qu.: 2.000   3rd Qu.: 2.86   3rd Qu.: 2.79  
+##  Max.   :20.00   Max.   :12.000   Max.   :13.89   Max.   :20.00  
+##  NA&#39;s   :48647                    NA&#39;s   :49881   NA&#39;s   :49839  
+##       v77             v78             v80             v81       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 6.50   1st Qu.:12.32   1st Qu.: 1.45   1st Qu.: 5.97  
+##  Median : 7.37   Median :13.33   Median : 2.09   Median : 7.53  
+##  Mean   : 7.31   Mean   :13.35   Mean   : 2.21   Mean   : 7.29  
+##  3rd Qu.: 8.16   3rd Qu.:14.40   3rd Qu.: 2.85   3rd Qu.: 8.79  
+##  Max.   :20.00   Max.   :20.00   Max.   :14.29   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :49944   NA&#39;s   :49886   NA&#39;s   :48642  
+##       v82             v83             v84             v85       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 3.38   1st Qu.: 1.44   1st Qu.: 0.95   1st Qu.: 1.83  
+##  Median : 3.69   Median : 1.94   Median : 1.42   Median : 2.58  
+##  Mean   : 6.23   Mean   : 2.18   Mean   : 1.61   Mean   : 2.82  
+##  3rd Qu.: 8.80   3rd Qu.: 2.67   3rd Qu.: 2.07   3rd Qu.: 3.58  
+##  Max.   :20.00   Max.   :10.23   Max.   :12.14   Max.   :13.33  
+##  NA&#39;s   :48642   NA&#39;s   :49879   NA&#39;s   :49879   NA&#39;s   :50717  
+##       v86             v87             v88             v89       
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.94   1st Qu.: 8.04   1st Qu.: 1.17   1st Qu.: 0.10  
+##  Median : 1.16   Median :10.01   Median : 1.77   Median : 0.32  
+##  Mean   : 1.22   Mean   :10.17   Mean   : 1.92   Mean   : 1.52  
+##  3rd Qu.: 1.42   3rd Qu.:12.26   3rd Qu.: 2.46   3rd Qu.: 1.76  
+##  Max.   :20.00   Max.   :20.00   Max.   :18.00   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :48671   NA&#39;s   :49879   NA&#39;s   :48636  
+##       v90             v92             v93             v94       
+##  Min.   : 0.30   Min.   : 0.01   Min.   : 0.01   Min.   : 0.00  
+##  1st Qu.: 0.86   1st Qu.: 0.44   1st Qu.: 4.54   1st Qu.: 3.34  
+##  Median : 0.97   Median : 0.54   Median : 5.30   Median : 3.74  
+##  Mean   : 0.97   Mean   : 0.58   Mean   : 5.47   Mean   : 3.86  
+##  3rd Qu.: 1.06   3rd Qu.: 0.68   3rd Qu.: 6.22   3rd Qu.: 4.23  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49882   NA&#39;s   :49887   NA&#39;s   :49879   NA&#39;s   :49879  
+##       v95             v96             v97             v98       
+##  Min.   : 0.01   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.50   1st Qu.: 5.75   1st Qu.: 6.31   1st Qu.: 6.09  
+##  Median : 0.62   Median : 6.52   Median : 7.44   Median : 7.64  
+##  Mean   : 0.67   Mean   : 6.46   Mean   : 7.62   Mean   : 7.66  
+##  3rd Qu.: 0.77   3rd Qu.: 7.23   3rd Qu.: 8.80   3rd Qu.: 9.07  
+##  Max.   :20.00   Max.   :13.64   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49887   NA&#39;s   :49879   NA&#39;s   :49887   NA&#39;s   :48673  
+##       v99             v100            v101            v102      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.93   1st Qu.: 5.70   1st Qu.: 5.26   1st Qu.: 1.79  
+##  Median : 1.23   Median :14.45   Median : 6.62   Median : 2.46  
+##  Mean   : 1.25   Mean   :12.08   Mean   : 6.85   Mean   : 2.90  
+##  3rd Qu.: 1.55   3rd Qu.:18.34   3rd Qu.: 8.24   3rd Qu.: 3.41  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :49880   NA&#39;s   :49839   NA&#39;s   :51362  
+##       v103            v104            v105            v106      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 4.50   1st Qu.: 2.14   1st Qu.: 0.05   1st Qu.:10.03  
+##  Median : 5.13   Median : 2.51   Median : 0.24   Median :12.08  
+##  Mean   : 5.30   Mean   : 2.65   Mean   : 1.09   Mean   :11.77  
+##  3rd Qu.: 5.88   3rd Qu.: 2.95   3rd Qu.: 1.03   3rd Qu.:13.73  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49879   NA&#39;s   :49879   NA&#39;s   :48665   NA&#39;s   :49839  
+##       v108            v109            v111            v114       
+##  Min.   : 0.10   Min.   : 0.00   Min.   : 0.00   Min.   : 4.362  
+##  1st Qu.: 1.53   1st Qu.: 1.83   1st Qu.: 2.32   1st Qu.:11.993  
+##  Median : 1.97   Median : 3.06   Median : 3.11   Median :14.031  
+##  Mean   : 2.15   Mean   : 4.17   Mean   : 3.37   Mean   :13.573  
+##  3rd Qu.: 2.54   3rd Qu.: 5.12   3rd Qu.: 4.15   3rd Qu.:15.379  
+##  Max.   :20.00   Max.   :20.00   Max.   :13.03   Max.   :19.823  
+##  NA&#39;s   :48642   NA&#39;s   :48642   NA&#39;s   :49879   NA&#39;s   :24      
+##       v115            v116            v117            v118      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 9.45   1st Qu.: 1.85   1st Qu.: 5.72   1st Qu.: 6.97  
+##  Median :10.48   Median : 2.22   Median : 8.03   Median : 8.14  
+##  Mean   :10.55   Mean   : 2.29   Mean   : 8.29   Mean   : 8.37  
+##  3rd Qu.:11.58   3rd Qu.: 2.65   3rd Qu.:10.51   3rd Qu.: 9.57  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :20.00  
+##  NA&#39;s   :49944   NA&#39;s   :49881   NA&#39;s   :48642   NA&#39;s   :49887  
+##       v119            v120            v121            v122      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 0.31   1st Qu.: 0.78   1st Qu.: 1.79   1st Qu.: 5.65  
+##  Median : 1.46   Median : 1.15   Median : 2.44   Median : 6.75  
+##  Mean   : 3.18   Mean   : 1.30   Mean   : 2.74   Mean   : 6.82  
+##  3rd Qu.: 4.16   3rd Qu.: 1.65   3rd Qu.: 3.39   3rd Qu.: 7.91  
+##  Max.   :20.00   Max.   :20.00   Max.   :13.29   Max.   :20.00  
+##  NA&#39;s   :50716   NA&#39;s   :49880   NA&#39;s   :49882   NA&#39;s   :49886  
+##       v123            v124            v126            v127      
+##  Min.   : 0.00   Min.   : 0.00   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 1.96   1st Qu.: 0.02   1st Qu.: 1.42   1st Qu.: 2.10  
+##  Median : 2.74   Median : 0.14   Median : 1.61   Median : 2.97  
+##  Mean   : 3.56   Mean   : 0.94   Mean   : 1.67   Mean   : 3.24  
+##  3rd Qu.: 4.09   3rd Qu.: 0.87   3rd Qu.: 1.84   3rd Qu.: 4.10  
+##  Max.   :20.00   Max.   :20.00   Max.   :20.00   Max.   :14.74  
+##  NA&#39;s   :50717   NA&#39;s   :48636   NA&#39;s   :49879   NA&#39;s   :49879  
+##       v128            v129              v130            v131      
+##  Min.   : 0.09   Min.   : 0.0000   Min.   : 0.00   Min.   : 0.00  
+##  1st Qu.: 1.39   1st Qu.: 0.0000   1st Qu.: 1.11   1st Qu.: 1.00  
+##  Median : 1.80   Median : 0.0000   Median : 1.56   Median : 1.58  
+##  Mean   : 2.03   Mean   : 0.3076   Mean   : 1.93   Mean   : 1.74  
+##  3rd Qu.: 2.39   3rd Qu.: 0.0000   3rd Qu.: 2.35   3rd Qu.: 2.27  
+##  Max.   :20.00   Max.   :11.0000   Max.   :19.93   Max.   :20.00  
+##  NA&#39;s   :48642                     NA&#39;s   :49887   NA&#39;s   :49944</code></pre>
+<pre class="r"><code>head(train)</code></pre>
+<pre><code>##          v1       v2 v3       v4        v5       v6       v7         v8
+## 1 1.3357394 8.727474  C 3.921026  7.915266 2.599278 3.176895 0.01294147
+## 2        NA       NA  C       NA  9.191265       NA       NA 2.30163049
+## 3 0.9438769 5.310079  C 4.410969  5.326159 3.979592 3.928571 0.01964513
+## 4 0.7974146 8.304757  C 4.225930 11.627438 2.097700 1.987549 0.17194670
+## 5        NA       NA  C       NA        NA       NA       NA         NA
+## 6        NA       NA  C       NA  8.856791       NA       NA 0.35999313
+##          v9       v10      v11      v12      v13       v14      v15
+## 1  9.999999 0.5032815 16.43411 6.085711 2.866830 11.636387 1.355013
+## 2        NA 1.3129099       NA 6.507647       NA 11.636386       NA
+## 3 12.666667 0.7658640 14.75610 6.384670 2.505589  9.603542 1.984127
+## 4  8.965516 6.5426695 16.34748 9.646653 3.903302 14.094723 1.945044
+## 5        NA 1.0503284       NA 6.320087       NA 10.991098       NA
+## 6        NA 1.0503278       NA 6.216077       NA 11.916255       NA
+##        v16      v17       v18       v19      v20      v21  v22
+## 1 8.571429 3.670350 0.1067204 0.1488831 18.86928 7.730923  XDX
+## 2       NA       NA        NA        NA       NA 6.763110  GUV
+## 3 5.882353 3.170847 0.2445410 0.1442584 17.95233 5.245035   FQ
+## 4 5.517242 3.610789 1.2241139 0.2316304 18.37641 7.517125 ACUE
+## 5       NA       NA        NA        NA       NA 6.414567  HIT
+## 6       NA       NA        NA        NA       NA 7.351426  AYX
+##             v23 v24       v25      v26      v27       v28      v29  v30
+## 1 -1.716131e-08   C 0.1394116 1.720818 3.393503 0.5901219 8.880867    C
+## 2            NA   C 3.0561440       NA       NA        NA       NA    C
+## 3 -2.785053e-07   E 0.1139970 2.244897 5.306122 0.8360052 7.499999 &lt;NA&gt;
+## 4 -4.805344e-07   D 0.1488431 1.308269 2.303640 8.9266621 8.874521    C
+## 5            NA   E        NA       NA       NA        NA       NA &lt;NA&gt;
+## 6            NA   A 0.2184583       NA       NA        NA       NA &lt;NA&gt;
+##   v31      v32      v33      v34      v35      v36       v37 v38       v39
+## 1   A 1.083033 1.010829 7.270147 8.375452 11.32659 0.4545457   0 4.0120878
+## 2   A       NA       NA 3.615077       NA 14.57948        NA   0        NA
+## 3   A 1.454082 1.734693 4.043864 7.959184 12.73052 0.2597401   0 7.3789642
+## 4   B 1.587644 1.666667 8.703550 8.898468 11.30280 0.4337346   0 0.2873217
+## 5   A       NA       NA 6.083151       NA       NA        NA   0        NA
+## 6   A       NA       NA 7.496613       NA 15.49796        NA   0        NA
+##         v40      v41      v42      v43       v44      v45       v46 v47
+## 1  7.711453 7.653429 12.70758 2.015505 10.498338 9.848672 0.1135606   C
+## 2 14.305766       NA       NA       NA        NA       NA 2.4499589   E
+## 3 13.077201 6.173469 12.34694 2.926830  8.897561 5.343819 0.1260346   C
+## 4 11.523045 7.931035 12.93582 1.470878 12.708574 9.670823 0.1083869   C
+## 5 10.138920       NA       NA       NA        NA       NA        NA   I
+## 6  7.903915       NA       NA       NA        NA       NA 0.2626321   I
+##        v48      v49       v50      v51 v52      v53        v54       v55
+## 1 12.17173 8.086643 0.8994200 7.277792   G 16.74797 0.03709633 1.2996383
+## 2       NA       NA 1.3792101       NA   G       NA 1.12946855        NA
+## 3 12.71133 6.836734 0.6045041 9.637627   F 15.10204 0.08557286 0.7653052
+## 4 12.19485 8.591954 3.3291765 4.780357   H 16.62169 0.13972117 1.1781613
+## 5       NA       NA 1.3645359       NA   H       NA         NA        NA
+## 6       NA       NA 1.6535830       NA   K       NA 0.13127766        NA
+##    v56      v57       v58       v59      v60      v61 v62       v63
+## 1   DI 3.971118 0.5298022 10.890984 1.588448 15.85815   1 0.1534611
+## 2   DY       NA        NA        NA       NA       NA   2 2.5447365
+## 3   AS 4.030613 4.2774557  9.105481 2.151361 16.07560   1 0.1236432
+## 4   BW 3.965517 1.7321022 11.777912 1.229246 15.92739   1 0.1402597
+## 5 &lt;NA&gt;       NA        NA        NA       NA       NA   1        NA
+## 6   DX       NA        NA        NA       NA       NA   1 0.2765240
+##        v64      v65 v66      v67      v68       v69       v70 v71 v72
+## 1 6.363189 18.30393   C 9.314079 15.23179 17.142857 11.784549   F   1
+## 2       NA       NA   A       NA       NA        NA 12.053353   F   2
+## 3 5.517949 16.37721   A 8.367347 11.04046  5.882353  8.460654   B   3
+## 4 6.292979 17.01165   A 9.703065 18.56813  9.425288 13.594728   F   2
+## 5       NA       NA   C       NA       NA        NA        NA   F   1
+## 6       NA       NA   A       NA       NA        NA 11.521160   F   1
+##        v73 v74 v75      v76      v77       v78 v79      v80       v81
+## 1 1.614988   B   D 2.230940 7.292418  8.571429   E 3.000000  7.528326
+## 2       NA   B   D       NA       NA        NA   D       NA  7.277655
+## 3 2.413618   B   B 1.963971 5.918368 11.764705   E 3.333334 10.194433
+## 4 2.272541   B   D 2.188198 8.213602 13.448277   B 1.947261  4.797873
+## 5       NA   B   D       NA       NA        NA   C       NA        NA
+## 6       NA   B   D       NA       NA        NA   I       NA  7.978375
+##         v82       v83      v84      v85       v86       v87      v88
+## 1  8.861647 0.6498199 1.299638 1.707317 0.8664262  9.551836 3.321300
+## 2  3.430691        NA       NA       NA        NA  9.848004       NA
+## 3  8.266200 1.5306113 1.530613 2.429906 1.0714292  8.447465 3.367346
+## 4 13.315819 1.6810343 1.379310 1.587045 1.2428166 10.747144 1.408046
+## 5        NA        NA       NA       NA        NA        NA       NA
+## 6  3.811356        NA       NA       NA        NA  9.618443       NA
+##          v89       v90 v91       v92      v93      v94       v95      v96
+## 1 0.09567836 0.9053423   A 0.4422517 5.814018 3.517720 0.4620187 7.436824
+## 2 2.67858429        NA   B        NA       NA       NA        NA       NA
+## 3 0.11138775 0.8114466   G 0.2714800 5.156559 4.214944 0.3096565 5.663265
+## 4 0.03905132 1.0424254   B 0.7639246 5.498902 3.423944 0.8325182 7.375480
+## 5         NA        NA   G        NA       NA       NA        NA       NA
+## 6 0.11639025        NA   G        NA       NA       NA        NA       NA
+##        v97       v98      v99     v100     v101     v102     v103     v104
+## 1 5.454545  8.877414 1.191337 19.47020 8.389237 2.757375 4.374296 1.574039
+## 2       NA  8.303967       NA       NA       NA       NA       NA       NA
+## 3 5.974026 11.588858 0.841837 15.49133 5.879353 3.292788 5.924457 1.668401
+## 4 6.746988  6.942002 1.334611 18.25635 8.507281 2.503055 4.872157 2.573664
+## 5       NA        NA       NA       NA       NA       NA       NA       NA
+## 6       NA  8.970103       NA       NA       NA       NA       NA       NA
+##          v105     v106 v107     v108     v109 v110      v111 v112 v113
+## 1 0.007293816 12.57918    E 2.382692 3.930922    B 0.4332129    O &lt;NA&gt;
+## 2 1.505334661       NA    B 1.825361 4.247858    A        NA    U    G
+## 3 0.008274619 11.67057    C 1.375753 1.184211    B 3.3673476    S &lt;NA&gt;
+## 4 0.113967370 12.55427    B 2.230754 1.990131    B 2.6436782    J &lt;NA&gt;
+## 5          NA       NA    C       NA       NA    A        NA    T    G
+## 6 0.193530452       NA    C 1.763765 2.442616    A        NA    D    X
+##       v114      v115     v116      v117     v118          v119     v120
+## 1 15.63491  2.857144 1.951220  6.592012 5.909091 -6.297423e-07 1.059603
+## 2 10.30804        NA       NA 10.595357       NA            NA       NA
+## 3 11.20556 12.941177 3.129253  3.478911 6.233767 -2.792745e-07 2.138728
+## 4 13.77767 10.574713 1.511063  4.949609 7.180722  5.655086e-01 1.166281
+## 5 14.09710        NA       NA        NA       NA            NA       NA
+## 6 15.75050        NA       NA  8.851677       NA            NA       NA
+##        v121     v122     v123        v124 v125     v126     v127     v128
+## 1 0.8035719 8.000000 1.989780 0.035753685   AU 1.804126 3.113719 2.024285
+## 2        NA       NA       NA 0.598895646   AF       NA       NA 1.957825
+## 3 2.2388065 9.333333 2.477596 0.013451914   AE 1.773709 3.922193 1.120468
+## 4 1.9565207 7.018256 1.812795 0.002267384   CJ 1.415230 2.954381 1.990847
+## 5        NA       NA       NA          NA    Z       NA       NA       NA
+## 6        NA       NA       NA 0.049861164    X       NA       NA 1.536222
+##   v129      v130     v131
+## 1    0 0.6363645 2.857144
+## 2    0        NA       NA
+## 3    2 0.8831175 1.176472
+## 4    1 1.6771076 1.034483
+## 5    0        NA       NA
+## 6    0        NA       NA</code></pre>
+<pre class="r"><code>head(test)</code></pre>
+<pre><code>##   ID            v1        v2 v3       v4       v5       v6       v7
+## 1  0  1.375465e+00 11.361141  C 4.200778 6.577000 2.081784 1.784386
+## 2  1            NA        NA  C       NA       NA       NA       NA
+## 3  2 -4.903407e-07  8.201529  C 4.544371 6.550100 1.558442 2.467532
+## 4  7  2.661870e+00  3.041241  C 1.657216 9.773080 2.078337 1.430855
+## 5 10  1.252822e+00 11.283352  C 4.638388 8.520510 2.302484 3.510159
+## 6 11  1.733601e+00  7.525109  C 3.263905 5.608608 2.356090 2.369477
+##            v8       v9       v10      v11      v12      v13      v14
+## 1 0.011093989 9.523810 1.3129108 16.85185 6.961173 3.107462 12.23014
+## 2          NA       NA 1.2910291       NA 6.618289       NA 10.76080
+## 3 0.007163669 7.142858 1.5754921 15.14286 6.894249 1.899789 13.30619
+## 4 1.252156757 7.959596 1.5754925 14.42436 6.856236 5.086604 10.39703
+## 5 0.074263344 7.612904 1.0503278 15.58999 6.273627 2.500173 11.35450
+## 6 0.065481247 9.935483 0.6564561 15.91304 6.344974 3.538897 11.26833
+##        v15      v16      v17        v18       v19      v20      v21  v22
+## 1 1.773050 2.857142 3.493816 0.09682572 0.2254813 17.91023 7.437806 AFPB
+## 2       NA       NA       NA         NA        NA       NA 5.895192  FOG
+## 3 1.302083 3.333334 3.177414 0.07067607 0.1723911 17.53755 8.253452  HXZ
+## 4 2.803497 7.302904 1.121984 0.60852416 0.4765542 15.28559 5.539484 AGMU
+## 5 1.353503 3.018868 4.974031 0.53077857 0.1488208 18.66949 6.741530  AWW
+## 6 1.413043 6.434783 2.370286 0.45798259 0.2148222 17.43342 7.210579  PMR
+##             v23 v24        v25       v26      v27       v28      v29  v30
+## 1  9.558310e-07   E 0.06918032 0.9541517 4.386616 0.5730174 6.988848 &lt;NA&gt;
+## 2            NA   D         NA        NA       NA        NA       NA    A
+## 3 -2.137218e-07   B 0.05961957 2.8571420 2.207792 0.3271337 8.311689    C
+## 4  5.863396e-07   E 1.77999339 1.4068746 1.350919 5.3474442 6.474820    E
+## 5 -2.725031e-07   E 0.15871874 2.5865309 3.261852 3.7866152 8.860045    C
+## 6 -2.709114e-08   D 0.07481423 1.5707271 2.530121 3.1922180 7.697456    C
+##   v31       v32      v33      v34      v35      v36           v37 v38
+## 1   A 1.1152417 2.081784 5.228503 8.178438 12.18322  8.333339e-01   0
+## 2   A        NA       NA 8.387431       NA       NA            NA   4
+## 3   A 0.9740256 1.558442 7.958990 8.311689 12.19512 -5.249334e-07   0
+## 4   A 2.3621113 3.852918 6.223849 6.634692 13.74193  2.011174e+00   0
+## 5   A 0.9988712 1.196388 5.476858 7.742663 10.81499  3.858511e-01   0
+## 6   A 1.5461853 3.078982 2.915391 8.540829 12.62344  7.909610e-01   0
+##            v39       v40      v41      v42      v43       v44       v45
+## 1 2.842768e+00 11.754576 6.765800 10.85502 1.296297 10.613377  9.417172
+## 2           NA  6.737574       NA       NA       NA        NA        NA
+## 3 6.707352e+00  7.701325 6.883118 12.07792 3.428570 10.215687  7.908401
+## 4 8.248888e-07 10.444974 6.059153 13.18945 1.826832  7.635934 12.850679
+## 5 4.897771e-01 11.097606 7.381491 13.13770 2.979737 12.589072  9.237298
+## 6 2.337280e-01 14.751464 7.349398 12.81124 1.855072  9.542730  9.521419
+##          v46 v47      v48      v49       v50      v51 v52      v53
+## 1 0.10048036   J 12.77453 7.509293 0.1188471 8.590755   C 17.02128
+## 2         NA   C       NA       NA 1.0270697       NA   A       NA
+## 3 0.08219359   I 12.77083 7.792207 0.8407309 9.885153   A 15.00000
+## 4 1.50421758   I 16.79167 7.801759 0.9463731 8.578365   A 15.38272
+## 5 0.12795728   I 10.57961 7.878104 1.4936541 5.513188   H 15.66879
+## 6 0.09801763   G 13.92891 8.366801 0.4915264 9.137001   D 16.62609
+##          v54       v55  v56      v57           v58       v59      v60
+## 1 0.04431261 1.3382906   AF 2.602230  2.919712e-01  9.038609 0.817843
+## 2         NA        NA   DI       NA            NA        NA       NA
+## 3 0.02012624 0.7792218   DO 5.454544 -8.476044e-07  9.452010 2.857142
+## 4 1.35125929 3.8129506   CN 4.356514  1.953542e+01 10.425885 1.128431
+## 5 0.06302325 0.8803607 &lt;NA&gt; 5.259594  7.723043e-01 11.048157 2.462377
+## 6 0.11297912 2.4497988   DP 4.056225  9.876538e-01 10.050132 1.398928
+##        v61 v62        v63      v64      v65 v66      v67      v68
+## 1 14.91151   1 0.09146612 5.967949 15.61147   A 8.029739 15.91241
+## 2       NA   1         NA       NA       NA   C       NA       NA
+## 3 15.56114   1 0.08371838 5.633655 15.77866   C 9.090908 13.20000
+## 4 10.93524   1 1.80968920 2.181748 12.36611   B 8.401279 17.67712
+## 5 16.94530   2 0.12352750 8.188559 17.49018   B 9.469527 18.69507
+## 6 14.97397   1 0.10599535 4.340699 15.03570   A 9.236948 18.24074
+##         v69       v70 v71 v72      v73 v74 v75       v76      v77      v78
+## 1  8.571429 11.222210   F   1 1.929013   B   D 2.1468601 6.171004 15.71429
+## 2        NA        NA   F   5       NA   B   D        NA       NA       NA
+## 3  6.666666  7.860585   F   1 1.488096   B   D 1.9102917 5.714285 16.66667
+## 4 13.195021 14.124303   F   1 3.905010   B   D 0.6445811 6.370902 11.20332
+## 5  9.811320 13.146984   F   2 1.465039   B   D 3.1275118 7.799097 14.71698
+## 6 10.608695 11.701400   F   1 2.324879   B   D 1.4015822 6.907630 12.34783
+##   v79      v80      v81      v82      v83       v84       v85       v86
+## 1   Q 1.904761 8.918731 8.750729 2.453532 0.8921923 1.8604649 0.8921928
+## 2   E       NA       NA       NA       NA        NA        NA        NA
+## 3   C 1.428572 8.952301 8.744891 1.948051 0.7792210 1.8604648 0.7792213
+## 4   C 3.555555 6.284919 3.264427 3.237409 4.2206228 6.0000005 1.3069539
+## 5   C 1.032259 6.837319 8.715703 1.320542 0.5417608 0.9523804 0.8634313
+## 6   M 4.774194 9.900686 8.406304 2.851405 2.9718875 2.1495319 0.7831320
+##         v87       v88        v89       v90 v91       v92      v93      v94
+## 1  7.904968 1.7843866 0.10529784 0.9889803   B 0.6582693 4.929298 2.992365
+## 2        NA        NA         NA        NA   C        NA       NA       NA
+## 3  5.886226 5.7142850 0.04385124 0.9187341   C 0.5526421 4.350983 3.163664
+## 4 13.037068 0.4316542 2.03594718 1.4951020   B 0.7754992 3.176199 5.071340
+## 5 12.073390 2.2347631 0.15004066 0.9932057   B 0.3899739 5.632135 3.885107
+## 6  6.692097 1.6064262 0.05352908 1.0063207   C 0.5295531 4.549925 3.785681
+##         v95      v96       v97       v98       v99       v100     v101
+## 1 0.7599553 5.947955  4.999999 10.013503 0.8178435 19.7080300 4.186787
+## 2        NA       NA        NA        NA        NA         NA       NA
+## 3 0.6049659 6.233767 12.631578 10.214574 0.9523803 19.7999990 6.535555
+## 4 1.0205270 4.980016  8.603352  5.743589 0.6887828  0.1161434 3.627655
+## 5 0.4175483 6.941310  7.652733  8.589221 1.0759977 19.2276962 6.606787
+## 6 0.6456405 6.398928  6.440678  7.571328 1.0553327 18.9506169 5.467954
+##       v102     v103     v104        v105      v106 v107     v108     v109
+## 1 1.873945 4.129022 1.701894 0.004534710 11.688117    B 1.502480 2.121710
+## 2       NA       NA       NA          NA        NA    D       NA       NA
+## 3 0.762963 4.917534 1.981859 0.002793551 11.747048    D 1.188768 2.088817
+## 4       NA 7.486234 4.313037 1.048636695  5.957084    B 2.690866 6.211596
+## 5 1.493882 4.929004 1.906923 0.055134073 14.666965    B 2.467017 5.312500
+## 6 1.820259 5.440665 2.261760 0.027792102  9.968654    D 1.472781 1.365132
+##   v110     v111 v112 v113      v114      v115     v116      v117      v118
+## 1    A 3.568773    U &lt;NA&gt; 12.246698 11.428572 1.276596  4.777902  5.833334
+## 2    B       NA    E &lt;NA&gt; 16.284938        NA       NA        NA        NA
+## 3    A 3.116883    Q   AJ 15.622710 13.333334 3.750001  4.740574 12.631580
+## 4    A 3.932854    F    G 13.701587  6.804980 1.901235 12.446092 10.726256
+## 5    A 1.828443    A    I 13.395401 10.188679 3.031846  7.637177  8.038585
+## 6    A 4.337350    I    G  9.275629  9.391304 1.982608  3.747666  7.231637
+##            v119      v120     v121     v122     v123          v124 v125
+## 1 -9.974950e-07 1.4598544 3.267328 7.619048 1.815241  1.112270e-07   AF
+## 2            NA        NA       NA       NA       NA            NA    I
+## 3  4.910660e-08 0.6000005 2.500001 5.714286 1.970928  1.412265e-02   AV
+## 4  1.824479e+01 2.3228805 4.149590 4.404040 8.163614  1.100329e+00    B
+## 5  6.626723e-01 0.8521966 1.676217 6.580644 1.325654  2.584588e-01    A
+## 6  2.073860e-01 1.5740744 3.408000 5.032257 2.551374 -9.391195e-07   BM
+##       v126     v127     v128 v129      v130          v131
+## 1 1.292368 3.903345 1.485925    0 2.3333338  1.428572e+00
+## 2       NA       NA       NA    0        NA            NA
+## 3 1.128724 5.844156 1.475892    0 1.2631572 -6.380022e-07
+## 4 1.988688 1.558753 2.448814    0 5.3854742  1.493777e+00
+## 5 1.863796 2.666478 2.374275    0 0.6816724  2.264151e+00
+## 6 1.541607 3.463855 1.196959    0 2.5988695  1.217392e+00</code></pre>
+<p>We see very much features have 20.0 as maximum value.</p>
+<p>Take a look at the data with categorical features:</p>
+<pre class="r"><code>str(train.cat)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    114321 obs. of  19 variables:
+##  $ v3  : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 3 3 3 3 3 3 3 3 NA 3 ...
+##  $ v22 : Factor w/ 18210 levels &quot;AA&quot;,&quot;AAA&quot;,&quot;AAAA&quot;,..: 16671 7734 7087 1511 8038 4580 11283 3862 7522 12770 ...
+##  $ v24 : Factor w/ 5 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 3 3 5 4 5 1 5 4 5 3 ...
+##  $ v30 : Factor w/ 7 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 3 3 NA 3 NA NA 7 3 NA 3 ...
+##  $ v31 : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 1 1 1 2 1 1 1 1 NA 1 ...
+##  $ v47 : Factor w/ 10 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 3 5 3 3 9 9 3 9 4 9 ...
+##  $ v52 : Factor w/ 12 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 7 7 6 8 8 11 1 3 8 1 ...
+##  $ v56 : Factor w/ 122 levels &quot;A&quot;,&quot;AA&quot;,&quot;AB&quot;,..: 86 102 18 48 NA 101 18 93 6 NA ...
+##  $ v66 : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 3 1 1 1 3 1 1 3 2 1 ...
+##  $ v71 : Factor w/ 9 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 5 5 2 5 5 5 5 5 2 5 ...
+##  $ v74 : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 2 2 2 2 2 2 2 2 2 2 ...
+##  $ v75 : Factor w/ 4 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;: 4 4 2 4 4 4 4 4 2 4 ...
+##  $ v79 : Factor w/ 18 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 5 4 5 2 3 9 5 3 16 3 ...
+##  $ v91 : Factor w/ 7 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 1 2 7 2 7 7 2 1 3 1 ...
+##  $ v107: Factor w/ 7 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 5 2 3 2 3 3 2 5 4 5 ...
+##  $ v110: Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 2 1 2 2 1 1 2 1 3 1 ...
+##  $ v112: Factor w/ 22 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 15 21 19 10 20 4 9 6 12 10 ...
+##  $ v113: Factor w/ 36 levels &quot;A&quot;,&quot;AA&quot;,&quot;AB&quot;,..: NA 18 NA NA 18 34 NA 23 NA 26 ...
+##  $ v125: Factor w/ 90 levels &quot;A&quot;,&quot;AA&quot;,&quot;AB&quot;,..: 22 7 6 65 90 88 38 53 83 69 ...</code></pre>
+<pre class="r"><code>str(test.cat)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    114393 obs. of  19 variables:
+##  $ v3  : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 3 3 3 3 3 3 3 3 3 3 ...
+##  $ v22 : Factor w/ 18252 levels &quot;A&quot;,&quot;AA&quot;,&quot;AAA&quot;,..: 3041 7095 8385 3541 4541 12479 4284 2751 6736 16608 ...
+##  $ v24 : Factor w/ 5 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 5 4 2 5 5 4 5 3 5 4 ...
+##  $ v30 : Factor w/ 7 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: NA 1 3 5 3 3 3 5 3 NA ...
+##  $ v31 : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 1 1 1 1 1 1 1 1 2 1 ...
+##  $ v47 : Factor w/ 9 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 9 3 8 8 8 7 9 8 3 6 ...
+##  $ v52 : Factor w/ 12 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 3 1 1 1 8 4 12 7 1 2 ...
+##  $ v56 : Factor w/ 116 levels &quot;A&quot;,&quot;AA&quot;,&quot;AB&quot;,..: 7 81 87 62 NA 88 35 87 47 112 ...
+##  $ v66 : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 1 3 3 2 2 1 1 1 1 3 ...
+##  $ v71 : Factor w/ 9 levels &quot;B&quot;,&quot;C&quot;,&quot;E&quot;,&quot;F&quot;,..: 4 4 4 4 4 4 4 4 4 4 ...
+##  $ v74 : Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 2 2 2 2 2 2 2 2 2 2 ...
+##  $ v75 : Factor w/ 4 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;: 4 4 4 4 4 4 4 4 4 4 ...
+##  $ v79 : Factor w/ 17 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 16 5 3 3 3 12 8 3 2 11 ...
+##  $ v91 : Factor w/ 7 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 2 3 3 2 2 3 7 7 7 2 ...
+##  $ v107: Factor w/ 7 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 2 4 4 2 2 4 3 3 3 2 ...
+##  $ v110: Factor w/ 3 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;: 1 2 1 1 1 1 1 1 2 1 ...
+##  $ v112: Factor w/ 22 levels &quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,..: 21 5 17 6 1 9 12 9 3 21 ...
+##  $ v113: Factor w/ 36 levels &quot;A&quot;,&quot;AA&quot;,&quot;AB&quot;,..: NA NA 11 17 19 17 17 8 NA 23 ...
+##  $ v125: Factor w/ 90 levels &quot;A&quot;,&quot;AA&quot;,&quot;AB&quot;,..: 7 73 23 28 1 41 66 38 36 15 ...</code></pre>
+<pre class="r"><code>summary(train.cat)</code></pre>
+<pre><code>##     v3              v22         v24            v30          v31       
+##  A   :   227   AGDF   :  2386   A: 3789   C      :32178   A   :88347  
+##  B   :    53   YGJ    :  2119   B: 8150   G      : 8728   B   :18947  
+##  C   :110584   QKI    :   668   C:20872   D      : 5225   C   : 3570  
+##  NA&#39;s:  3457   PWR    :   649   D:26333   E      : 2973   NA&#39;s: 3457  
+##                HZE    :   423   E:55177   F      : 2589               
+##                (Other):107576             (Other): 2518               
+##                NA&#39;s   :   500             NA&#39;s   :60110               
+##       v47             v52             v56        v66            v71       
+##  C      :55425   J      :11103   BW     :11351   A:70353   F      :75094  
+##  I      :39071   I      :10260   DI     :10256   B:18264   B      :30255  
+##  E      : 5301   F      : 9806   AS     : 8832   C:25704   C      : 8947  
+##  F      : 4322   C      : 9681   BZ     : 7174             I      :   16  
+##  G      : 3946   D      : 9607   AW     : 6369             G      :    5  
+##  D      : 3157   (Other):63861   (Other):63457             A      :    1  
+##  (Other): 3099   NA&#39;s   :    3   NA&#39;s   : 6882             (Other):    3  
+##  v74        v75            v79             v91             v107      
+##  A:    45   A:   18   C      :34561   A      :27079   E      :27079  
+##  B:113560   B:39192   B      :25801   G      :24545   C      :24545  
+##  C:   716   C:   24   E      :25257   C      :23157   D      :23157  
+##             D:75087   D      : 5302   B      :22683   B      :22683  
+##                       I      : 4561   F      :13418   A      :13418  
+##                       K      : 4308   (Other): 3436   (Other): 3436  
+##                       (Other):14531   NA&#39;s   :    3   NA&#39;s   :    3  
+##  v110           v112            v113            v125      
+##  A:55688   F      :21671   G      :16252   BM     : 5759  
+##  B:55426   I      :10224   M      : 7374   AK     : 5337  
+##  C: 3207   A      : 9545   AC     : 5956   BJ     : 4465  
+##            N      : 9086   AF     : 3568   CG     : 3826  
+##            D      : 7327   I      : 2605   AP     : 3410  
+##            (Other):56086   (Other):23262   (Other):91447  
+##            NA&#39;s   :  382   NA&#39;s   :55304   NA&#39;s   :   77</code></pre>
+<pre class="r"><code>summary(test.cat)</code></pre>
+<pre><code>##     v3              v22         v24            v30          v31       
+##  A   :   206   AGDF   :  2391   A: 3803   C      :32326   A   :88590  
+##  B   :    55   YGJ    :  2225   B: 8168   G      : 8515   B   :18900  
+##  C   :110640   PWR    :   647   C:20887   D      : 5117   C   : 3411  
+##  NA&#39;s:  3492   QKI    :   634   D:26356   E      : 3099   NA&#39;s: 3492  
+##                HZE    :   491   E:55179   F      : 2571               
+##                (Other):107528             (Other): 2423               
+##                NA&#39;s   :   477             NA&#39;s   :60342               
+##       v47             v52             v56        v66            v71       
+##  C      :55428   J      :11349   BW     :11561   A:70375   F      :75295  
+##  I      :39170   I      :10160   DI     :10204   B:18284   B      :29937  
+##  E      : 5351   D      : 9789   AS     : 8570   C:25734   C      : 9136  
+##  F      : 4228   L      : 9610   BZ     : 7215             I      :   14  
+##  G      : 3883   G      : 9572   AW     : 6721             G      :    7  
+##  D      : 3177   (Other):63911   (Other):63204             E      :    1  
+##  (Other): 3156   NA&#39;s   :    2   NA&#39;s   : 6918             (Other):    3  
+##  v74        v75            v79             v91             v107      
+##  A:    41   A:   20   C      :34705   A      :26947   E      :26947  
+##  B:113668   B:39068   B      :25962   G      :24678   C      :24678  
+##  C:   684   C:   17   E      :25202   C      :23170   D      :23170  
+##             D:75288   D      : 5351   B      :22591   B      :22591  
+##                       I      : 4508   F      :13617   A      :13617  
+##                       K      : 4212   (Other): 3388   (Other): 3388  
+##                       (Other):14453   NA&#39;s   :    2   NA&#39;s   :    2  
+##  v110           v112            v113            v125      
+##  A:55727   F      :21717   G      :16208   BM     : 5855  
+##  B:55428   I      :10304   M      : 7400   AK     : 5399  
+##  C: 3238   A      : 9414   AC     : 5972   BJ     : 4449  
+##            N      : 9025   AF     : 3445   CG     : 3731  
+##            D      : 7316   I      : 2681   AP     : 3356  
+##            (Other):56204   (Other):23329   (Other):91519  
+##            NA&#39;s   :  413   NA&#39;s   :55358   NA&#39;s   :   84</code></pre>
+<p>Features v22, v56 and v125 have very much levels, so we probably we should use them as numeric features as a first stept.</p>
+<p>What are the dimensions of the datasets?</p>
+<pre class="r"><code>cat(&quot;Train data has&quot;, nrow(train), &quot;rows and&quot;, ncol(train), &quot;columns! \n&quot;)</code></pre>
+<pre><code>## Train data has 114321 rows and 131 columns!</code></pre>
+<pre class="r"><code>cat(&quot;Test data has&quot;, nrow(test), &quot;rows and&quot;, ncol(test), &quot;columns! \n&quot;)</code></pre>
+<pre><code>## Test data has 114393 rows and 132 columns!</code></pre>
+<p>In the above structure commands we saw missing data, how much is it?</p>
+<pre class="r"><code>sum(is.na(train)) / (nrow(train) * ncol(train))</code></pre>
+<pre><code>## [1] 0.3403748</code></pre>
+<pre class="r"><code>sum(is.na(test)) / (nrow(test) * ncol(test))</code></pre>
+<pre><code>## [1] 0.3378664</code></pre>
+<pre class="r"><code>apply(train, 2, function(x) { sum(is.na(x)) })</code></pre>
+<pre><code>##    v1    v2    v3    v4    v5    v6    v7    v8    v9   v10   v11   v12 
+## 49832 49796  3457 49796 48624 49832 49832 48619 49851    84 49836    86 
+##   v13   v14   v15   v16   v17   v18   v19   v20   v21   v22   v23   v24 
+## 49832     4 49836 49895 49796 49832 49843 49840   611   500 50675     0 
+##   v25   v26   v27   v28   v29   v30   v31   v32   v33   v34   v35   v36 
+## 48619 49832 49832 49832 49832 60110  3457 49832 49832   111 49832 48624 
+##   v37   v38   v39   v40   v41   v42   v43   v44   v45   v46   v47   v48 
+## 49843     0 49836   111 49832 49832 49836 49796 49832 48619     0 49796 
+##   v49   v50   v51   v52   v53   v54   v55   v56   v57   v58   v59   v60 
+## 49832    86 50678     3 49836 48619 49832  6882 49832 49836 49796 49832 
+##   v61   v62   v63   v64   v65   v66   v67   v68   v69   v70   v71   v72 
+## 49796     0 48619 49796 49840     0 49832 49836 49895 48636     0     0 
+##   v73   v74   v75   v76   v77   v78   v79   v80   v81   v82   v83   v84 
+## 49836     0     0 49796 49832 49895     0 49851 48624 48624 49832 49832 
+##   v85   v86   v87   v88   v89   v90   v91   v92   v93   v94   v95   v96 
+## 50682 49832 48663 49832 48619 49836     3 49843 49832 49832 49843 49832 
+##   v97   v98   v99  v100  v101  v102  v103  v104  v105  v106  v107  v108 
+## 49843 48654 49832 49836 49796 51316 49832 49832 48658 49796     3 48624 
+##  v109  v110  v111  v112  v113  v114  v115  v116  v117  v118  v119  v120 
+## 48624     0 49832   382 55304    30 49895 49836 48624 49843 50680 49836 
+##  v121  v122  v123  v124  v125  v126  v127  v128  v129  v130  v131 
+## 49840 49851 50678 48619    77 49832 49832 48624     0 49843 49895</code></pre>
+<pre class="r"><code>apply(test, 2, function(x) { sum(is.na(x)) })</code></pre>
+<pre><code>##    ID    v1    v2    v3    v4    v5    v6    v7    v8    v9   v10   v11 
+##     0 49879 49839  3492 49839 48642 49879 49879 48636 49886    82 49881 
+##   v12   v13   v14   v15   v16   v17   v18   v19   v20   v21   v22   v23 
+##    84 49879     2 49881 49944 49839 49879 49887 49882   573   477 50713 
+##   v24   v25   v26   v27   v28   v29   v30   v31   v32   v33   v34   v35 
+##     0 48636 49879 49879 49879 49879 60342  3492 49879 49879   104 49879 
+##   v36   v37   v38   v39   v40   v41   v42   v43   v44   v45   v46   v47 
+## 48642 49887     0 49880   104 49879 49879 49881 49839 49879 48636     0 
+##   v48   v49   v50   v51   v52   v53   v54   v55   v56   v57   v58   v59 
+## 49839 49879    84 50717     2 49881 48636 49879  6918 49879 49880 49839 
+##   v60   v61   v62   v63   v64   v65   v66   v67   v68   v69   v70   v71 
+## 49879 49839     0 48636 49839 49882     0 49879 49880 49944 48647     0 
+##   v72   v73   v74   v75   v76   v77   v78   v79   v80   v81   v82   v83 
+##     0 49881     0     0 49839 49879 49944     0 49886 48642 48642 49879 
+##   v84   v85   v86   v87   v88   v89   v90   v91   v92   v93   v94   v95 
+## 49879 50717 49879 48671 49879 48636 49882     2 49887 49879 49879 49887 
+##   v96   v97   v98   v99  v100  v101  v102  v103  v104  v105  v106  v107 
+## 49879 49887 48673 49879 49880 49839 51362 49879 49879 48665 49839     2 
+##  v108  v109  v110  v111  v112  v113  v114  v115  v116  v117  v118  v119 
+## 48642 48642     0 49879   413 55358    24 49944 49881 48642 49887 50716 
+##  v120  v121  v122  v123  v124  v125  v126  v127  v128  v129  v130  v131 
+## 49880 49882 49886 50717 48636    84 49879 49879 48642     0 49887 49944</code></pre>
+<p>We see about 34 Percent of missing data, this will need some work.</p>
+<p>Can we see any different missing data structure depending on the target?</p>
+<pre class="r"><code>train$target &lt;- target
+train.na.per.target &lt;- sapply(sort(unique(train$target)), function(x) { apply(train[train$target == x, ], 2, function(y) { sum(is.na(y)) }) })
+
+train.na.per.target</code></pre>
+<pre><code>##         [,1]  [,2]
+## v1     11456 38376
+## v2     11446 38350
+## v3       677  2780
+## v4     11446 38350
+## v5     11107 37517
+## v6     11456 38376
+## v7     11456 38376
+## v8     11107 37512
+## v9     11460 38391
+## v10        1    83
+## v11    11457 38379
+## v12        1    85
+## v13    11456 38376
+## v14        0     4
+## v15    11457 38379
+## v16    11471 38424
+## v17    11446 38350
+## v18    11456 38376
+## v19    11459 38384
+## v20    11457 38383
+## v21       76   535
+## v22       90   410
+## v23    11644 39031
+## v24        0     0
+## v25    11107 37512
+## v26    11456 38376
+## v27    11456 38376
+## v28    11456 38376
+## v29    11456 38376
+## v30    14229 45881
+## v31      677  2780
+## v32    11456 38376
+## v33    11456 38376
+## v34        9   102
+## v35    11456 38376
+## v36    11107 37517
+## v37    11459 38384
+## v38        0     0
+## v39    11457 38379
+## v40        9   102
+## v41    11456 38376
+## v42    11456 38376
+## v43    11457 38379
+## v44    11446 38350
+## v45    11456 38376
+## v46    11107 37512
+## v47        0     0
+## v48    11446 38350
+## v49    11456 38376
+## v50        1    85
+## v51    11645 39033
+## v52        0     3
+## v53    11457 38379
+## v54    11107 37512
+## v55    11456 38376
+## v56     2598  4284
+## v57    11456 38376
+## v58    11457 38379
+## v59    11446 38350
+## v60    11456 38376
+## v61    11446 38350
+## v62        0     0
+## v63    11107 37512
+## v64    11446 38350
+## v65    11457 38383
+## v66        0     0
+## v67    11456 38376
+## v68    11457 38379
+## v69    11471 38424
+## v70    11111 37525
+## v71        0     0
+## v72        0     0
+## v73    11457 38379
+## v74        0     0
+## v75        0     0
+## v76    11446 38350
+## v77    11456 38376
+## v78    11471 38424
+## v79        0     0
+## v80    11460 38391
+## v81    11107 37517
+## v82    11107 37517
+## v83    11456 38376
+## v84    11456 38376
+## v85    11645 39037
+## v86    11456 38376
+## v87    11118 37545
+## v88    11456 38376
+## v89    11107 37512
+## v90    11457 38379
+## v91        0     3
+## v92    11459 38384
+## v93    11456 38376
+## v94    11456 38376
+## v95    11459 38384
+## v96    11456 38376
+## v97    11459 38384
+## v98    11116 37538
+## v99    11456 38376
+## v100   11457 38379
+## v101   11446 38350
+## v102   11844 39472
+## v103   11456 38376
+## v104   11456 38376
+## v105   11118 37540
+## v106   11446 38350
+## v107       0     3
+## v108   11107 37517
+## v109   11107 37517
+## v110       0     0
+## v111   11456 38376
+## v112      83   299
+## v113    9740 45564
+## v114       8    22
+## v115   11471 38424
+## v116   11457 38379
+## v117   11107 37517
+## v118   11459 38384
+## v119   11645 39035
+## v120   11457 38379
+## v121   11457 38383
+## v122   11460 38391
+## v123   11645 39033
+## v124   11107 37512
+## v125      13    64
+## v126   11456 38376
+## v127   11456 38376
+## v128   11107 37517
+## v129       0     0
+## v130   11459 38384
+## v131   11471 38424
+## target     0     0</code></pre>
+<pre class="r"><code>round(colSums(train.na.per.target) / sum(train.na.per.target), digits = 4)</code></pre>
+<pre><code>## [1] 0.2292 0.7708</code></pre>
+<p>If the target has the value 1 the number of missing data is about 3.4 times as high when the target is 0.</p>
+<p>Are there any constant columns?</p>
+<pre class="r"><code>train.const &lt;- sapply(train, function(x) { length(unique(x)) == 1 })
+test.const &lt;- sapply(test, function(x) { length(unique(x)) == 1 })
+cat(&quot;Train data set - Number of constant columns:&quot;, sum(train.const), &quot;\n&quot;)</code></pre>
+<pre><code>## Train data set - Number of constant columns: 0</code></pre>
+<pre class="r"><code>cat(&quot;Test data set - Number of constant columns:&quot;, sum(test.const), &quot;\n&quot;)</code></pre>
+<pre><code>## Test data set - Number of constant columns: 0</code></pre>
+<p>Densities of continous Features</p>
+<pre class="r"><code>train.cont &lt;- data.frame(train.cont, target=train$target)
+plotDensity &lt;- function(data.in, i) {
+  data &lt;- data.frame(x=data.in[,i], Target=data.in$target)
+  p &lt;- ggplot(data) + 
+    geom_line(aes(x=x), stat=&quot;density&quot;, size=1, alpha=1.0) +
+    xlab(colnames(data.in)[i]) + theme_light()
+  return (p)
+}
+
+doPlots &lt;- function(data.in, fun, ii, ncol=3) {
+  pp &lt;- list()
+  for (i in ii) {
+    p &lt;- fun(data.in=data.in, i=i)
+    pp &lt;- c(pp, list(p))
+  }
+  do.call(&quot;grid.arrange&quot;, c(pp, ncol=ncol))
+}
+
+for (i in 1:28) {
+  ii &lt;- (1:4)+(4*(i-1))
+  doPlots(data.in=train.cont, fun=plotDensity, ii=ii, ncol=2)
+}</code></pre>
+<p><img src="output_files/figure-html/unnamed-chunk-9-1.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-2.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-3.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-4.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-5.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-6.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-7.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-8.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-9.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-10.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-11.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-12.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-13.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-14.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-15.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-16.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-17.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-18.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-19.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-20.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-21.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-22.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-23.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-24.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-25.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-26.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-27.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-9-28.png" title="" alt="" width="672" /></p>
+<p>Boxplots of continous Features depending on target</p>
+<pre class="r"><code>plotBox &lt;- function(data.in, i) {
+  data &lt;- data.frame(y=data.in[,i], target=data.in$target)
+  p &lt;- ggplot(data, aes(x=factor(target), y=y)) + geom_boxplot() + ylab(colnames(data.in)[i]) + theme_light()
+  return (p)
+}
+
+for (i in 1:28) {
+  ii &lt;- (1:4)+(4*(i-1))
+  doPlots(data.in=train.cont, fun=plotBox, ii=ii, ncol=2)
+}</code></pre>
+<p><img src="output_files/figure-html/unnamed-chunk-10-1.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-2.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-3.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-4.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-5.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-6.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-7.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-8.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-9.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-10.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-11.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-12.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-13.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-14.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-15.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-16.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-17.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-18.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-19.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-20.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-21.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-22.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-23.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-24.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-25.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-26.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-27.png" title="" alt="" width="672" /><img src="output_files/figure-html/unnamed-chunk-10-28.png" title="" alt="" width="672" /></p>
+<p>Take a look at the target</p>
+<pre class="r"><code>ggplot(train) + geom_bar(aes(factor(target))) + xlab(&quot;target&quot;) + theme_light()</code></pre>
+<p><img src="output_files/figure-html/unnamed-chunk-11-1.png" title="" alt="" width="672" /></p>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
